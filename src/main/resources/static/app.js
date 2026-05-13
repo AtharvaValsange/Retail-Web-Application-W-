@@ -12,6 +12,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orderHistory, setOrderHistory] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const imageMap = {
     1: 'https://unixindia.in/cdn/shop/files/6_0d11d30e-af24-4a0e-a3d0-4a3635e52aa4.jpg?v=1767617587&width=1500',
@@ -23,6 +25,9 @@ function App() {
     7: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
     8: 'https://images.unsplash.com/photo-1510552776732-09d2e1b0f471?auto=format&fit=crop&w=800&q=80',
     9: 'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=800&q=80',
+    10: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80',
+    11: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80',
+    12: 'https://images.unsplash.com/photo-1513267048331-042df019a1d0?auto=format&fit=crop&w=800&q=80',
   };
 
   const scrollToProducts = () => {
@@ -38,6 +43,16 @@ function App() {
       setPage('main');
     }
   }, [token]);
+
+  // Auto-dismiss messages after 4 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage('');
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
@@ -170,56 +185,67 @@ function App() {
     setCart((current) => current.filter((item) => item.id !== productId));
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!cart.length) {
       setMessage('Your cart is empty. Add items to checkout.');
       return;
     }
+    setSelectedPaymentMethod('');
+    setPage('payment');
+  };
 
-    let purchased = 0;
-    for (const item of cart) {
-      const response = await fetch('/api/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: item.id, token }),
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        purchased += item.quantity;
-      } else if (response.status === 401) {
-        handleLogout();
-        return;
-      }
+  const handlePayment = async (paymentMethod) => {
+    if (!paymentMethod) {
+      setMessage('Please select a payment method.');
+      return;
     }
 
-    if (purchased) {
-      const now = new Date();
-      const orderDate = now.toLocaleString();
-      const estimatedDelivery = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const orderItems = cart.map((item) => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        image: item.image,
-      }));
-      const orderTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const orderNumber = `#${String(Date.now()).slice(-8)}`;
-      
-      setOrderHistory((current) => [{
-        id: Date.now(),
-        orderNumber: orderNumber,
-        date: orderDate,
-        status: 'Processing',
-        estimatedDelivery: estimatedDelivery,
-        items: orderItems,
-        total: orderTotal,
-      }, ...current]);
-      
-      setCart([]);
-      setMessage(`✅ Order placed! Order number: ${orderNumber}`);
+    if (!cart.length) {
+      setMessage('Cart is empty. Add items before payment.');
+      return;
+    }
+
+    setIsProcessing(true);
+    setSelectedPaymentMethod(paymentMethod);
+    setMessage(`💳 Processing payment via ${paymentMethod}...`);
+
+    // Simulate payment processing delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Directly create order without redundant purchase calls
+    const now = new Date();
+    const orderDate = now.toLocaleString();
+    const estimatedDelivery = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const orderItems = cart.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      image: item.image,
+    }));
+    const orderTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const orderNumber = `#${String(Date.now()).slice(-8)}`;
+    
+    setOrderHistory((current) => [{
+      id: Date.now(),
+      orderNumber: orderNumber,
+      date: orderDate,
+      status: 'Confirmed',
+      estimatedDelivery: estimatedDelivery,
+      items: orderItems,
+      total: orderTotal,
+      paymentMethod: paymentMethod,
+    }, ...current]);
+    
+    setCart([]);
+    setSelectedPaymentMethod('');
+    setIsProcessing(false);
+    setMessage(`✅ Payment Successful! Order #${orderNumber.slice(1)} placed successfully. Redirecting...`);
+    
+    // Navigate to order history
+    setTimeout(() => {
       setPage('order');
-    }
+    }, 1000);
   };
 
   const handleLogout = () => {
@@ -534,6 +560,103 @@ function App() {
                 <strong>${cartTotal.toFixed(2)}</strong>
               </div>
               <button className="checkout" type="button" onClick={handleCheckout}>Checkout</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {page === 'payment' && (
+        <div className="payment-page">
+          <section className="card payment-card">
+            <div className="payment-header">
+              <h2>Secure Checkout</h2>
+              <p>Select your preferred payment method to complete your order</p>
+            </div>
+
+            <div className="order-review">
+              <h3>Order Summary</h3>
+              <div className="review-items">
+                {cart.map((item) => (
+                  <div key={item.id} className="review-item">
+                    <div>
+                      <p className="item-name">{item.name}</p>
+                      <p className="item-qty">Qty: {item.quantity}</p>
+                    </div>
+                    <p className="item-price">${(item.price * item.quantity).toFixed(2)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="review-total">
+                <span>Total Amount</span>
+                <strong className="total-price">${cartTotal.toFixed(2)}</strong>
+              </div>
+            </div>
+
+            <div className="payment-methods">
+              <h3>Payment Method</h3>
+              <div className="methods-grid">
+                <button
+                  type="button"
+                  className={`payment-method-btn ${selectedPaymentMethod === 'Credit Card' ? 'selected' : ''}`}
+                  onClick={() => setSelectedPaymentMethod('Credit Card')}
+                >
+                  💳 Credit Card
+                </button>
+                <button
+                  type="button"
+                  className={`payment-method-btn ${selectedPaymentMethod === 'Debit Card' ? 'selected' : ''}`}
+                  onClick={() => setSelectedPaymentMethod('Debit Card')}
+                >
+                  💳 Debit Card
+                </button>
+                <button
+                  type="button"
+                  className={`payment-method-btn ${selectedPaymentMethod === 'UPI' ? 'selected' : ''}`}
+                  onClick={() => setSelectedPaymentMethod('UPI')}
+                >
+                  📱 UPI
+                </button>
+                <button
+                  type="button"
+                  className={`payment-method-btn ${selectedPaymentMethod === 'Net Banking' ? 'selected' : ''}`}
+                  onClick={() => setSelectedPaymentMethod('Net Banking')}
+                >
+                  🏦 Net Banking
+                </button>
+                <button
+                  type="button"
+                  className={`payment-method-btn ${selectedPaymentMethod === 'Wallet' ? 'selected' : ''}`}
+                  onClick={() => setSelectedPaymentMethod('Wallet')}
+                >
+                  👛 Digital Wallet
+                </button>
+                <button
+                  type="button"
+                  className={`payment-method-btn ${selectedPaymentMethod === 'COD' ? 'selected' : ''}`}
+                  onClick={() => setSelectedPaymentMethod('COD')}
+                >
+                  📦 Cash on Delivery
+                </button>
+              </div>
+            </div>
+
+            <div className="payment-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setPage('home')}
+                disabled={isProcessing}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="checkout"
+                onClick={() => handlePayment(selectedPaymentMethod)}
+                disabled={isProcessing || !selectedPaymentMethod}
+              >
+                {isProcessing ? '⏳ Processing...' : `Pay $${cartTotal.toFixed(2)}`}
+              </button>
             </div>
           </section>
         </div>

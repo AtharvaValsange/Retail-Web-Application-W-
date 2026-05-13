@@ -27,7 +27,10 @@ public class Main {
             new Product(6, "Blaze Phone X", "Sleek smartphone with pro camera and long battery life.", 699.99, "Mobile Phones"),
             new Product(7, "Pro Laptop 15", "High-performance laptop for work and creative projects.", 1099.99, "Laptops"),
             new Product(8, "Noise-Canceling Earbuds", "Compact earbuds with rich sound and active noise cancellation.", 99.99, "Headphones"),
-            new Product(9, "Fitness Tracker", "Lightweight tracker with sleep and health insights.", 59.99, "Smartwatches")
+            new Product(9, "Fitness Tracker", "Lightweight tracker with sleep and health insights.", 59.99, "Smartwatches"),
+            new Product(10, "Ultra USB-C Cable", "Durable, fast-charging USB-C cable with 3-meter length.", 12.99, "Accessories"),
+            new Product(11, "Wireless Charger", "Fast wireless charging pad compatible with all Qi devices.", 35.99, "Accessories"),
+            new Product(12, "4K Webcam", "Crystal-clear 4K webcam for streaming and video calls.", 89.99, "Accessories")
     );
 
     public static void main(String[] args) throws IOException {
